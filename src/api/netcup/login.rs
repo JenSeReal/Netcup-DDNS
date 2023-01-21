@@ -1,8 +1,9 @@
 use serde::{Deserialize, Serialize};
 use serde_with::serde_as;
 
-use super::{Actions, LoginCredentials, Response, ResponseData, Status, StatusCode};
 use crate::serialization::{empty_string_as_none, opt_string_or_struct};
+
+use super::{Actions, LoginCredentials, Response, ResponseData, Status, StatusCode};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginRequest {
@@ -61,7 +62,7 @@ mod tests {
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::{Actions, ResponseData, Status, StatusCode},
+    api::netcup::{Actions, ResponseData, Status, StatusCode},
     errors::Errors,
   };
 

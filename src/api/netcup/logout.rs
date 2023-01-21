@@ -54,7 +54,7 @@ mod test {
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::{Actions, Status, StatusCode},
+    api::netcup::{Actions, Status, StatusCode},
     errors::Errors,
   };
 

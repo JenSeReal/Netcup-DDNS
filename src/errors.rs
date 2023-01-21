@@ -9,13 +9,16 @@ pub enum Errors {
   RetrieveAPISesionId,
   SendRequest,
   SerializeResponse,
+  SerializeIp,
   LoadingEnvFile,
   ValidationError,
+  SerializeDomains,
 }
 
 impl Display for Errors {
   fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
     match self {
+      Errors::SerializeIp => write!(f, "Could not serialze ip."),
       Errors::Login => write!(f, "Could not login into the Netcup API."),
       Errors::Logout => write!(f, "Could not logout of the Netcup API."),
       Errors::RetrieveAPISesionId => {
@@ -25,6 +28,7 @@ impl Display for Errors {
       Errors::SerializeResponse => write!(f, "Failed to serialize the response."),
       Errors::LoadingEnvFile => write!(f, "Failed to load .env file."),
       Errors::ValidationError => write!(f, "Request failed."),
+      Errors::SerializeDomains => write!(f, "Failed to serialize the domains."),
     }
   }
 }
