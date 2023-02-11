@@ -37,6 +37,12 @@ impl FromStr for DNSEntry {
   }
 }
 
+impl DNSEntry {
+  pub fn domain(&self) -> &str {
+    &self.domain
+  }
+}
+
 #[derive(Debug, StructOpt)]
 #[structopt(
   name = "Netcup updater",

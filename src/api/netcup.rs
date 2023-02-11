@@ -8,6 +8,7 @@ use std::fmt::{Debug, Display};
 
 use crate::errors::Errors;
 
+pub mod info_dns_zone;
 pub mod login;
 pub mod logout;
 
@@ -25,7 +26,7 @@ where
     .json(&request)
     .send()
     .await
-    .report()
+    .into_report()
     .change_context(Errors::SendRequest)
     .attach_printable(format!("Could not send request {:?}", request))?;
 
@@ -35,13 +36,13 @@ where
     let body = resonse
       .text()
       .await
-      .report()
+      .into_report()
       .change_context(Errors::SerializeResponse)?;
 
     debug!("Recieved response body: {:?}", body);
 
     let response_object = serde_json::from_str::<Rs>(&body)
-      .report()
+      .into_report()
       .change_context(Errors::SerializeResponse)?;
 
     debug!("Serialized responde body: {:?}", response_object);
@@ -50,6 +51,10 @@ where
       StatusCode::Success => {
         info!("Request was successful.");
         Ok(response_object)
+      }
+      StatusCode::Error => {
+        info!("Request wasn't successful. Maybe the API key is not valid");
+        Err(Errors::SendRequest.into())
       }
       StatusCode::ValidationError => {
         info!("Request wasn't successful. Maybe too many requests in one hour.");
@@ -65,15 +70,16 @@ where
   Err(Report::new(Errors::SendRequest))
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
-pub enum Actions {
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub enum Action {
   Login,
   Logout,
+  InfoDnsZone,
 }
 
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
 pub enum Status {
   Error,
   Started,
@@ -98,10 +104,12 @@ impl Display for Status {
 #[repr(u32)]
 pub enum StatusCode {
   Success = 2000,
+  Error = 4001,
   ValidationError = 4013,
 }
 
 pub trait Response {
+  fn status(&self) -> Status;
   fn status_code(&self) -> StatusCode;
 }
 

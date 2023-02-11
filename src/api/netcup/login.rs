@@ -3,11 +3,11 @@ use serde_with::serde_as;
 
 use crate::serialization::{empty_string_as_none, opt_string_or_struct};
 
-use super::{Actions, LoginCredentials, Response, ResponseData, Status, StatusCode};
+use super::{Action, LoginCredentials, Response, ResponseData, Status, StatusCode};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LoginRequest {
-  action: Actions,
+  action: Action,
   #[serde(rename = "param")]
   params: LoginCredentials,
 }
@@ -15,7 +15,7 @@ pub struct LoginRequest {
 impl LoginRequest {
   pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
     Self {
-      action: Actions::Login,
+      action: Action::Login,
       params: LoginCredentials {
         customer_number,
         api_key: api_key.to_string(),
@@ -33,7 +33,7 @@ pub struct LoginResponse {
   #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
   client_request_id: Option<String>,
   #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<Actions>,
+  action: Option<Action>,
   status: Status,
   #[serde(rename = "statuscode")]
   status_code: StatusCode,
@@ -55,6 +55,10 @@ impl Response for LoginResponse {
   fn status_code(&self) -> StatusCode {
     self.status_code
   }
+
+  fn status(&self) -> Status {
+    self.status
+  }
 }
 
 #[cfg(test)]
@@ -62,7 +66,7 @@ mod tests {
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::netcup::{Actions, ResponseData, Status, StatusCode},
+    api::netcup::{Action, ResponseData, Status, StatusCode},
     errors::Errors,
   };
 
@@ -94,12 +98,12 @@ mod tests {
   #[test]
   fn serialize_successful_login_response() -> Result<(), Errors> {
     let ser = serde_json::from_str::<LoginResponse>(SUCCESSFUL_LOGIN)
-      .report()
+      .into_report()
       .change_context(Errors::SerializeResponse)?;
 
     assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);
     assert_eq!(None, ser.client_request_id);
-    assert_eq!(Some(Actions::Login), ser.action);
+    assert_eq!(Some(Action::Login), ser.action);
     assert_eq!(Status::Success, ser.status);
     assert_eq!(StatusCode::Success, ser.status_code);
     assert_eq!("Login successful", ser.short_message);
@@ -120,7 +124,7 @@ mod tests {
   #[test]
   fn serialize_failed_login_response() -> Result<(), Errors> {
     let ser = serde_json::from_str::<LoginResponse>(FAILED_LOGIN)
-      .report()
+      .into_report()
       .change_context(Errors::SerializeResponse)?;
 
     assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);

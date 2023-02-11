@@ -1,36 +1,25 @@
-use std::fmt::Display;
+use thiserror::Error;
 
-use error_stack::Context;
-
-#[derive(Debug)]
+#[derive(Debug, Error)]
 pub enum Errors {
+  #[error("Could not login into the Netcup API.")]
   Login,
+  #[error("Could not logout of the Netcup API.")]
   Logout,
+  #[error("Failed to retrieve the API session id.")]
   RetrieveAPISesionId,
+  #[error("Failed to send the request to Netcup.")]
   SendRequest,
+  #[error("Failed to serialize the response.")]
   SerializeResponse,
+  #[error("Could not serialze ip.")]
   SerializeIp,
+  #[error("Failed to load .env file.")]
   LoadingEnvFile,
+  #[error("Request failed.")]
   ValidationError,
+  #[error("Failed to serialize the domains.")]
   SerializeDomains,
+  #[error("Could not find DNS Zone {0}")]
+  DNSZoneNotFound(String),
 }
-
-impl Display for Errors {
-  fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Errors::SerializeIp => write!(f, "Could not serialze ip."),
-      Errors::Login => write!(f, "Could not login into the Netcup API."),
-      Errors::Logout => write!(f, "Could not logout of the Netcup API."),
-      Errors::RetrieveAPISesionId => {
-        write!(f, "Failed to retrieve the API session id.")
-      }
-      Errors::SendRequest => write!(f, "Failed to send the request to Netcup."),
-      Errors::SerializeResponse => write!(f, "Failed to serialize the response."),
-      Errors::LoadingEnvFile => write!(f, "Failed to load .env file."),
-      Errors::ValidationError => write!(f, "Request failed."),
-      Errors::SerializeDomains => write!(f, "Failed to serialize the domains."),
-    }
-  }
-}
-
-impl Context for Errors {}

@@ -2,11 +2,11 @@ use serde::{Deserialize, Serialize};
 
 use crate::serialization::{empty_string_as_none, opt_string_or_struct};
 
-use super::{Actions, Response, ResponseData, SessionCredentials, Status, StatusCode};
+use super::{Action, Response, ResponseData, SessionCredentials, Status, StatusCode};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct LogoutRequest {
-  action: Actions,
+  action: Action,
   #[serde(rename = "param")]
   params: SessionCredentials,
 }
@@ -14,7 +14,7 @@ pub struct LogoutRequest {
 impl LogoutRequest {
   pub fn new(customer_number: u32, api_key: &str, app_session_id: &str) -> Self {
     Self {
-      action: Actions::Logout,
+      action: Action::Logout,
       params: SessionCredentials {
         customer_number,
         api_key: api_key.to_string(),
@@ -31,7 +31,7 @@ pub struct LogoutResponse {
   #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
   client_request_id: Option<String>,
   #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<Actions>,
+  action: Option<Action>,
   status: Status,
   #[serde(rename = "statuscode")]
   status_code: StatusCode,
@@ -47,6 +47,10 @@ impl Response for LogoutResponse {
   fn status_code(&self) -> StatusCode {
     self.status_code
   }
+
+  fn status(&self) -> Status {
+    self.status
+  }
 }
 
 #[cfg(test)]
@@ -54,7 +58,7 @@ mod test {
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::netcup::{Actions, Status, StatusCode},
+    api::netcup::{Action, Status, StatusCode},
     errors::Errors,
   };
 
@@ -74,12 +78,12 @@ mod test {
   #[test]
   fn serialize_successful_logout_response() -> Result<(), Errors> {
     let ser = serde_json::from_str::<LogoutResponse>(SUCCESSFUL_LOGOUT_RESPONSE)
-      .report()
+      .into_report()
       .change_context(Errors::SerializeResponse)?;
 
     assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);
     assert_eq!(None, ser.client_request_id);
-    assert_eq!(Some(Actions::Logout), ser.action);
+    assert_eq!(Some(Action::Logout), ser.action);
     assert_eq!(Status::Success, ser.status);
     assert_eq!(StatusCode::Success, ser.status_code);
     assert_eq!("Logout successful", ser.short_message);

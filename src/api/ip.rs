@@ -11,7 +11,7 @@ pub(crate) async fn current_ip(url: &str, client: &Client) -> error_stack::Resul
     .get(url)
     .send()
     .await
-    .report()
+    .into_report()
     .change_context(Errors::SendRequest)
     .attach_printable(format!("Could not send request {:?}", url))?;
 
@@ -21,10 +21,10 @@ pub(crate) async fn current_ip(url: &str, client: &Client) -> error_stack::Resul
     .text()
     .await
     .map(|s| IpAddr::from_str(&s))
-    .report()
+    .into_report()
     .change_context(Errors::SerializeResponse)
     .attach_printable("Could not serialize ip address.")?
-    .report()
+    .into_report()
     .change_context(Errors::SerializeIp)?;
 
   info!("Found ip address: {ip:#?}");
