@@ -6,10 +6,10 @@ use crate::{
   serialization::{empty_string_as_none, opt_string_or_struct},
 };
 
-use super::Action;
+use super::{info_dns_zone, Action};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ResponseData {
+pub(crate) struct ResponseData {
   name: String,
   #[serde(deserialize_with = "deserialize_number_from_string")]
   ttl: u32,
@@ -25,17 +25,7 @@ pub struct ResponseData {
   dns_sec_status: bool,
 }
 
-impl ResponseData {
-  pub fn ttl(&self) -> u32 {
-    self.ttl
-  }
-
-  pub fn ttl_mut(&mut self, ttl: u32) {
-    self.ttl = ttl
-  }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct Response {
   #[serde(rename = "serverrequestid")]
   server_request_id: String,
@@ -54,12 +44,6 @@ pub(crate) struct Response {
   response_data: Option<ResponseData>,
 }
 
-impl Response {
-  pub fn response_data(&self) -> Option<&ResponseData> {
-    self.response_data.as_ref()
-  }
-}
-
 impl netcup::Response for Response {
   fn status_code(&self) -> netcup::StatusCode {
     self.status_code
@@ -76,21 +60,7 @@ pub struct Request {
   param: Param,
 }
 
-impl Request {
-  pub fn new(domain_name: &str, customer_number: u32, api_key: &str, api_session_id: &str) -> Self {
-    Self {
-      action: Action::InfoDnsZone,
-      param: Param {
-        domain_name: domain_name.to_string(),
-        customer_number,
-        api_key: api_key.to_string(),
-        api_session_id: api_session_id.to_string(),
-      },
-    }
-  }
-}
-
-#[derive(Default, Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Param {
   #[serde(rename = "domainname")]
   domain_name: String,
@@ -100,6 +70,29 @@ pub struct Param {
   api_key: String,
   #[serde(rename = "apisessionid")]
   api_session_id: String,
+  #[serde(rename = "dnszone")]
+  dns_zone: info_dns_zone::ResponseData,
+}
+
+impl Request {
+  pub fn new(
+    domain_name: &str,
+    customer_number: u32,
+    api_key: &str,
+    api_session_id: &str,
+    dns_zone: &info_dns_zone::ResponseData,
+  ) -> Self {
+    Self {
+      action: Action::InfoDnsZone,
+      param: Param {
+        domain_name: domain_name.to_string(),
+        customer_number,
+        api_key: api_key.to_string(),
+        api_session_id: api_session_id.to_string(),
+        dns_zone: dns_zone.clone(),
+      },
+    }
+  }
 }
 
 #[cfg(test)]

@@ -2,16 +2,16 @@ use serde::{Deserialize, Serialize};
 
 use crate::serialization::{empty_string_as_none, opt_string_or_struct};
 
-use super::{Action, Response, ResponseData, SessionCredentials, Status, StatusCode};
+use super::{Action, ResponseData, SessionCredentials, Status, StatusCode};
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LogoutRequest {
+pub struct Request {
   action: Action,
   #[serde(rename = "param")]
   params: SessionCredentials,
 }
 
-impl LogoutRequest {
+impl Request {
   pub fn new(customer_number: u32, api_key: &str, app_session_id: &str) -> Self {
     Self {
       action: Action::Logout,
@@ -25,7 +25,7 @@ impl LogoutRequest {
 }
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LogoutResponse {
+pub struct Response {
   #[serde(rename = "serverrequestid")]
   server_request_id: String,
   #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
@@ -43,7 +43,7 @@ pub struct LogoutResponse {
   response_data: Option<ResponseData>,
 }
 
-impl Response for LogoutResponse {
+impl super::Response for Response {
   fn status_code(&self) -> StatusCode {
     self.status_code
   }
@@ -62,7 +62,7 @@ mod test {
     errors::Errors,
   };
 
-  use super::LogoutResponse;
+  use super::Response;
 
   const SUCCESSFUL_LOGOUT_RESPONSE: &str = r#"{
     "serverrequestid": "SUPERSECRETSERVERREQUESTID",
@@ -77,7 +77,7 @@ mod test {
 
   #[test]
   fn serialize_successful_logout_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<LogoutResponse>(SUCCESSFUL_LOGOUT_RESPONSE)
+    let ser = serde_json::from_str::<Response>(SUCCESSFUL_LOGOUT_RESPONSE)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 

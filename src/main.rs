@@ -7,7 +7,7 @@ use std::{env, time::Duration};
 
 use api::{
   ip::current_ip,
-  netcup::{info_dns_zone, login::LoginResponse},
+  netcup::{info_dns_zone, login},
 };
 use dotenv::dotenv;
 use error_stack::{IntoReport, Report, ResultExt};
@@ -16,11 +16,7 @@ use structopt::StructOpt;
 use tokio::time::sleep;
 
 use crate::{
-  api::netcup::{
-    login::LoginRequest,
-    logout::{LogoutRequest, LogoutResponse},
-    Response, Status,
-  },
+  api::netcup::{logout, update_dns_zone, Response, Status},
   cli::Cli,
   errors::Errors,
 };
@@ -36,10 +32,10 @@ async fn main() -> error_stack::Result<(), Errors> {
   let cli = Cli::from_args();
   let client = reqwest::Client::new();
 
-  let login_response: LoginResponse = api::netcup::request(
+  let login_response: login::Response = api::netcup::request(
     cli.api_url(),
     &client,
-    &LoginRequest::new(cli.customer_number(), cli.api_key(), cli.api_password()),
+    &login::Request::new(cli.customer_number(), cli.api_key(), cli.api_password()),
   )
   .await
   .change_context(Errors::Login)?;
@@ -74,19 +70,36 @@ async fn main() -> error_stack::Result<(), Errors> {
       Err(Errors::DNSZoneNotFound(domain.domain().to_string()))?
     }
 
-    if let Some(ttl) = dns_zone_info_response.ttl() {
-      if ttl > 300 {
-        warn!("TTL is {ttl} and should be 300");
+    if let Some(mut response_data) = dns_zone_info_response.response_data().cloned() {
+      let current_ttl = response_data.ttl();
+      if current_ttl > 300 {
+        warn!("TTL is {current_ttl} and should be 300");
+        if let Some(ttl) = cli.ttl() {
+          response_data.ttl_mut(ttl);
+          let _update_dns_zone_response: update_dns_zone::Response = api::netcup::request(
+            cli.api_url(),
+            &client,
+            &update_dns_zone::Request::new(
+              domain.domain(),
+              cli.customer_number(),
+              cli.api_key(),
+              &api_session_id,
+              &response_data,
+            ),
+          )
+          .await
+          .change_context(Errors::UpdateDNSZone(domain.domain().to_string()))?;
+        }
       }
     }
   }
 
   sleep(Duration::from_secs(2)).await;
 
-  api::netcup::request::<LogoutRequest, LogoutResponse>(
+  api::netcup::request::<logout::Request, logout::Response>(
     cli.api_url(),
     &client,
-    &LogoutRequest::new(cli.customer_number(), cli.api_key(), &api_session_id),
+    &logout::Request::new(cli.customer_number(), cli.api_key(), &api_session_id),
   )
   .await
   .change_context(Errors::Logout)?;

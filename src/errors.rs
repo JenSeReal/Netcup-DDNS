@@ -22,4 +22,6 @@ pub enum Errors {
   SerializeDomains,
   #[error("Could not find DNS Zone {0}")]
   DNSZoneNotFound(String),
+  #[error("Could not update dns zone {0}")]
+  UpdateDNSZone(String),
 }

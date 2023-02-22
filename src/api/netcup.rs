@@ -11,6 +11,7 @@ use crate::errors::Errors;
 pub mod info_dns_zone;
 pub mod login;
 pub mod logout;
+pub mod update_dns_zone;
 
 pub async fn request<Rq, Rs>(
   url: &str,

@@ -86,6 +86,13 @@ pub(crate) struct Cli {
     help = "URL where to find the external IP. Needs to return the IP as text format in a valid IP representation"
   )]
   ip_url: String,
+  #[structopt(
+    short,
+    long,
+    env = "TTL",
+    help = "Should the TTL be reduced to a certain time in ms, which could be better for ddns."
+  )]
+  ttl: Option<u32>,
   #[structopt(env = "DOMAINS", value_delimiter = ";")]
   domains: Vec<DNSEntry>,
 }
@@ -113,6 +120,10 @@ impl Cli {
 
   pub(crate) fn ip_url(&self) -> &str {
     &self.ip_url
+  }
+
+  pub(crate) fn ttl(&self) -> Option<u32> {
+    self.ttl
   }
 }
 

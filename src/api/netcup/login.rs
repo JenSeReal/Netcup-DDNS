@@ -3,16 +3,18 @@ use serde_with::serde_as;
 
 use crate::serialization::{empty_string_as_none, opt_string_or_struct};
 
-use super::{Action, LoginCredentials, Response, ResponseData, Status, StatusCode};
+use super::{Action, LoginCredentials, ResponseData, Status, StatusCode};
+
+use crate::api::netcup;
 
 #[derive(Debug, Serialize, Deserialize)]
-pub struct LoginRequest {
+pub struct Request {
   action: Action,
   #[serde(rename = "param")]
   params: LoginCredentials,
 }
 
-impl LoginRequest {
+impl Request {
   pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
     Self {
       action: Action::Login,
@@ -27,7 +29,7 @@ impl LoginRequest {
 
 #[derive(Debug, Serialize, Deserialize)]
 #[serde_as]
-pub struct LoginResponse {
+pub struct Response {
   #[serde(rename = "serverrequestid")]
   server_request_id: String,
   #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
@@ -45,13 +47,13 @@ pub struct LoginResponse {
   response_data: Option<ResponseData>,
 }
 
-impl LoginResponse {
+impl Response {
   pub fn api_session_id(&self) -> Option<String> {
     Some(self.response_data.as_ref()?.app_session_id.clone())
   }
 }
 
-impl Response for LoginResponse {
+impl netcup::Response for Response {
   fn status_code(&self) -> StatusCode {
     self.status_code
   }
@@ -70,7 +72,7 @@ mod tests {
     errors::Errors,
   };
 
-  use super::LoginResponse;
+  use super::Response;
 
   const FAILED_LOGIN: &str = r#"{
     "serverrequestid": "SUPERSECRETSERVERREQUESTID",
@@ -97,7 +99,7 @@ mod tests {
 
   #[test]
   fn serialize_successful_login_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<LoginResponse>(SUCCESSFUL_LOGIN)
+    let ser = serde_json::from_str::<Response>(SUCCESSFUL_LOGIN)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
@@ -123,7 +125,7 @@ mod tests {
 
   #[test]
   fn serialize_failed_login_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<LoginResponse>(FAILED_LOGIN)
+    let ser = serde_json::from_str::<Response>(FAILED_LOGIN)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
