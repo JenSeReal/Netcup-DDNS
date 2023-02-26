@@ -4,10 +4,7 @@ use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use std::{
-  fmt::{Debug, Display},
-  marker::PhantomData,
-};
+use std::{fmt::Debug, marker::PhantomData};
 
 use crate::{
   errors::Errors,
@@ -36,9 +33,9 @@ where
     .await
     .into_report()
     .change_context(Errors::SendRequest)
-    .attach_printable(format!("Could not send request {:?}", request))?;
+    .attach_printable(format!("Could not send request {:#?}", request))?;
 
-  debug!("Recieved response: {:?}", resonse);
+  debug!("Recieved response: {:#?}", resonse);
 
   if resonse.status().is_success() {
     let body = resonse
@@ -47,13 +44,13 @@ where
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
-    debug!("Recieved response body: {:?}", body);
+    debug!("Recieved response body: {:#?}", body);
 
     let response_object = serde_json::from_str::<Response<Rs>>(&body)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
-    debug!("Serialized responde body: {:?}", response_object);
+    debug!("Serialized response body: {:#?}", response_object);
 
     return match response_object.status_code() {
       StatusCode::Success => {
@@ -61,11 +58,11 @@ where
         Ok(response_object)
       }
       StatusCode::Error => {
-        info!("Request wasn't successful. Maybe the API key is not valid");
+        error!("Request wasn't successful. Maybe the API key is not valid");
         Err(Errors::SendRequest.into())
       }
       StatusCode::ValidationError => {
-        info!("Request wasn't successful. Maybe too many requests in one hour.");
+        error!("Request wasn't successful. Maybe too many requests in one hour.");
         Err(Errors::ValidationError.into())
       }
     };
@@ -96,18 +93,6 @@ pub enum Status {
   Pending,
   Warning,
   Success,
-}
-
-impl Display for Status {
-  fn fmt(&self, _f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-    match self {
-      Status::Error => todo!(),
-      Status::Started => todo!(),
-      Status::Pending => todo!(),
-      Status::Warning => todo!(),
-      Status::Success => todo!(),
-    }
-  }
 }
 
 #[derive(Debug, Serialize_repr, Deserialize_repr, Clone, Copy, PartialEq, Eq)]

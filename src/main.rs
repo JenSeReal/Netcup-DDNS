@@ -8,7 +8,8 @@ use std::{env, net::IpAddr, time::Duration};
 use api::netcup::{self, info_dns_zone, login};
 use dotenv::dotenv;
 use error_stack::{IntoReport, Report, ResultExt};
-use log::{debug, error, info, warn};
+use log::{error, info, warn};
+use public_ip::dns;
 use structopt::StructOpt;
 use tokio::time::sleep;
 
@@ -59,8 +60,7 @@ async fn main() -> error_stack::Result<(), Errors> {
   }
 
   for domain in cli.domains() {
-    debug!("{domain:#?}");
-
+    info!("Looking at domain {:#?}", domain);
     let dns_zone_info_response: netcup::Response<info_dns_zone::ResponseData> =
       api::netcup::request(
         cli.api_url(),
@@ -81,6 +81,7 @@ async fn main() -> error_stack::Result<(), Errors> {
         warn!("TTL is {current_ttl} and should be 300");
         if let Some(ttl) = cli.ttl() {
           response_data.ttl_mut(ttl);
+          info!("Changing TTL to {}", ttl);
           let _update_dns_zone_response: Response<update_dns_zone::ResponseData> =
             api::netcup::request(
               cli.api_url(),
@@ -93,12 +94,29 @@ async fn main() -> error_stack::Result<(), Errors> {
       }
     }
 
+    info!("Getting all dns records");
     let info_dns_record: netcup::Response<info_dns_records::ResponseData> = netcup::request(
       cli.api_url(),
       &client,
       &info_dns_records::Request::new(&session_credentials, domain.domain()),
     )
     .await?;
+
+    for sub in domain.sub_domains().iter() {
+      info!("Looking at {sub:#?} subdomain");
+
+      if let Some(dns_records) = info_dns_record
+        .response_data()
+        .and_then(|data| Some(data.dns_records()))
+      {
+        let found_record = dns_records
+          .iter()
+          .filter(|record| record.host_name() == sub)
+          .collect::<Vec<_>>();
+
+        dbg!(found_record);
+      }
+    }
   }
 
   sleep(Duration::from_secs(2)).await;

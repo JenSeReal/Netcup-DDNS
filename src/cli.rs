@@ -41,6 +41,10 @@ impl DNSEntry {
   pub fn domain(&self) -> &str {
     &self.domain
   }
+
+  pub fn sub_domains(&self) -> &Vec<String> {
+    &self.sub_domains
+  }
 }
 
 #[derive(Debug, StructOpt)]

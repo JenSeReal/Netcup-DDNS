@@ -2,9 +2,6 @@ use serde::{Deserialize, Serialize};
 
 use super::{Action, ApiSessionId, SessionCredentials};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ResponseData {}
-
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct Request {
   action: Action,
@@ -35,4 +32,41 @@ pub struct Param {
   api_key: String,
   #[serde(rename = "apisessionid")]
   api_session_id: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+
+pub struct ResponseData {
+  #[serde(rename = "dnsrecords")]
+  dns_records: Vec<DnsRecord>,
+}
+
+impl ResponseData {
+  pub fn dns_records(&self) -> &Vec<DnsRecord> {
+    &self.dns_records
+  }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct DnsRecord {
+  id: String,
+  #[serde(rename = "hostname")]
+  host_name: String,
+  #[serde(rename = "type")]
+  _type: String,
+  priority: String,
+  destination: String,
+  #[serde(rename = "deleterecord")]
+  delete_record: bool,
+  state: String,
+}
+
+impl DnsRecord {
+  pub fn host_name(&self) -> &str {
+    &self.host_name
+  }
+
+  pub fn destination(&self) -> &str {
+    &self.destination
+  }
 }

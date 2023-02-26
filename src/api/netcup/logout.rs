@@ -24,8 +24,11 @@ impl Request {
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct Params {
+  #[serde(rename = "customernumber")]
   customer_number: u32,
+  #[serde(rename = "apikey")]
   api_key: String,
+  #[serde(rename = "apisessionid")]
   api_session_id: String,
 }
 
