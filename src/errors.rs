@@ -12,8 +12,6 @@ pub enum Errors {
   SendRequest,
   #[error("Failed to serialize the response.")]
   SerializeResponse,
-  #[error("Could not serialze ip.")]
-  SerializeIp,
   #[error("Failed to load .env file.")]
   LoadingEnvFile,
   #[error("Request failed.")]

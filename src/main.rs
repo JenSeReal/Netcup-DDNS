@@ -3,12 +3,9 @@ mod cli;
 mod errors;
 mod serialization;
 
-use std::{env, time::Duration};
+use std::{env, net::IpAddr, time::Duration};
 
-use api::{
-  ip::current_ip,
-  netcup::{info_dns_zone, login},
-};
+use api::netcup::{info_dns_zone, login};
 use dotenv::dotenv;
 use error_stack::{IntoReport, Report, ResultExt};
 use log::{debug, info, warn};
@@ -46,9 +43,15 @@ async fn main() -> error_stack::Result<(), Errors> {
     .api_session_id()
     .ok_or_else(|| Report::new(Errors::RetrieveAPISesionId))?;
 
-  let ip = current_ip(cli.ip_url(), &client).await?;
+  let (ip4, ip6) = tokio::join!(public_ip::addr_v4(), public_ip::addr_v6());
+  let ips = [
+    ip4.and_then(|ip| Some(IpAddr::V4(ip))),
+    ip6.and_then(|ip| Some(IpAddr::V6(ip))),
+  ];
 
-  info!("Got IP {:?}", ip);
+  for ip in ips.iter().flatten() {
+    info!("Got IP {:?}", ip);
+  }
 
   for domain in cli.domains() {
     debug!("{domain:#?}");

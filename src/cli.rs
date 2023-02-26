@@ -79,14 +79,6 @@ pub(crate) struct Cli {
   )]
   api_password: String,
   #[structopt(
-    short = "i",
-    long,
-    env = "IP_URL",
-    default_value = "https://api.ipify.org",
-    help = "URL where to find the external IP. Needs to return the IP as text format in a valid IP representation"
-  )]
-  ip_url: String,
-  #[structopt(
     short,
     long,
     env = "TTL",
@@ -116,10 +108,6 @@ impl Cli {
 
   pub(crate) fn domains(&self) -> &Vec<DNSEntry> {
     &self.domains
-  }
-
-  pub(crate) fn ip_url(&self) -> &str {
-    &self.ip_url
   }
 
   pub(crate) fn ttl(&self) -> Option<u32> {

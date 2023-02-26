@@ -77,6 +77,7 @@ pub enum Action {
   Login,
   Logout,
   InfoDnsZone,
+  UpdateDnsZone,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]

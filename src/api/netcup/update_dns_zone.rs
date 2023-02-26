@@ -83,7 +83,7 @@ impl Request {
     dns_zone: &info_dns_zone::ResponseData,
   ) -> Self {
     Self {
-      action: Action::InfoDnsZone,
+      action: Action::UpdateDnsZone,
       param: Param {
         domain_name: domain_name.to_string(),
         customer_number,
@@ -92,130 +92,5 @@ impl Request {
         dns_zone: dns_zone.clone(),
       },
     }
-  }
-}
-
-#[cfg(test)]
-mod test {
-  use error_stack::{IntoReport, ResultExt};
-
-  use super::*;
-  use crate::{
-    api::netcup::{Action, Status, StatusCode},
-    errors::Errors,
-  };
-
-  const SUCCESSFUL_REQUEST: &str = r#"{
-  "serverrequestid": "SUPERSECRETSERVERREQUESTID",
-  "clientrequestid": "",
-  "action": "infoDnsZone",
-  "status": "success",
-  "statuscode": 2000,
-  "shortmessage": "DNS zone found",
-  "longmessage": "DNS zone was found.",
-  "responsedata": {
-    "name": "example.domain",
-    "ttl": "86400",
-    "serial": "2022071101",
-    "refresh": "28800",
-    "retry": "7200",
-    "expire": "1209600",
-    "dnssecstatus": false
-  }
-}"#;
-
-  const INVALID_API_KEY: &str = r#"{
-  "serverrequestid": "SUPERSECRETSERVERREQUESTID",
-  "clientrequestid": "",
-  "action": "infoDnsZone",
-  "status": "error",
-  "statuscode": 4001,
-  "shortmessage": "Api session id in invalid format",
-  "longmessage": "The session id is not in a valid format.",
-  "responsedata": ""
-}"#;
-
-  const INVALID_DNS_ZONE: &str = r#"{
-  "serverrequestid": "SUPERSECRETSERVERREQUESTID",
-  "clientrequestid": "",
-  "action": "",
-  "status": "error",
-  "statuscode": 4013,
-  "shortmessage": "Validation Error.",
-  "longmessage": "Value in field domainname does not match requirements of type: domainname. ",
-  "responsedata": ""
-}"#;
-
-  #[test]
-  fn serialize_successful_request() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(SUCCESSFUL_REQUEST)
-      .into_report()
-      .change_context(Errors::SerializeResponse)?;
-
-    assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);
-    assert_eq!(None, ser.client_request_id);
-    assert_eq!(Some(Action::InfoDnsZone), ser.action);
-    assert_eq!(Status::Success, ser.status);
-    assert_eq!(StatusCode::Success, ser.status_code);
-    assert_eq!("DNS zone found", ser.short_message);
-    assert_eq!(Some("DNS zone was found.".to_string()), ser.long_message);
-    assert_eq!(
-      Some(ResponseData {
-        name: "example.domain".to_string(),
-        ttl: 86400,
-        serial: 2022071101,
-        refresh: 28800,
-        retry: 7200,
-        expire: 1209600,
-        dns_sec_status: false
-      }),
-      ser.response_data
-    );
-
-    Ok(())
-  }
-
-  #[test]
-  fn serialize_invalid_api_key() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(INVALID_API_KEY)
-      .into_report()
-      .change_context(Errors::SerializeResponse)?;
-
-    assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);
-    assert_eq!(None, ser.client_request_id);
-    assert_eq!(Some(Action::InfoDnsZone), ser.action);
-    assert_eq!(Status::Error, ser.status);
-    assert_eq!(StatusCode::Error, ser.status_code);
-    assert_eq!("Api session id in invalid format", ser.short_message);
-    assert_eq!(
-      Some("The session id is not in a valid format.".to_string()),
-      ser.long_message
-    );
-    assert_eq!(None, ser.response_data);
-
-    Ok(())
-  }
-
-  #[test]
-  fn serialize_invalid_dns_zone() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(INVALID_DNS_ZONE)
-      .into_report()
-      .change_context(Errors::SerializeResponse)?;
-
-    assert_eq!("SUPERSECRETSERVERREQUESTID", ser.server_request_id);
-    assert_eq!(None, ser.client_request_id);
-    assert_eq!(None, ser.action);
-    assert_eq!(Status::Error, ser.status);
-    assert_eq!(StatusCode::ValidationError, ser.status_code);
-    assert_eq!("Validation Error.", ser.short_message);
-    assert_eq!(
-      Some(
-        "Value in field domainname does not match requirements of type: domainname. ".to_string()
-      ),
-      ser.long_message
-    );
-    assert_eq!(None, ser.response_data);
-
-    Ok(())
   }
 }
