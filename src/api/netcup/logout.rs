@@ -1,8 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use crate::serialization::{empty_string_as_none, opt_string_or_struct};
-
-use super::{Action, ResponseData, SessionCredentials, Status, StatusCode};
+use super::{Action, SessionCredentials};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
@@ -24,45 +22,18 @@ impl Request {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct Response {
-  #[serde(rename = "serverrequestid")]
-  server_request_id: String,
-  #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
-  client_request_id: Option<String>,
-  #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<Action>,
-  status: Status,
-  #[serde(rename = "statuscode")]
-  status_code: StatusCode,
-  #[serde(rename = "shortmessage")]
-  short_message: String,
-  #[serde(rename = "longmessage")]
-  long_message: Option<String>,
-  #[serde(rename = "responsedata", deserialize_with = "opt_string_or_struct")]
-  response_data: Option<ResponseData>,
-}
-
-impl super::Response for Response {
-  fn status_code(&self) -> StatusCode {
-    self.status_code
-  }
-
-  fn status(&self) -> Status {
-    self.status
-  }
-}
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ResponseData {}
 
 #[cfg(test)]
 mod test {
+  use super::*;
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::netcup::{Action, Status, StatusCode},
+    api::netcup::{Action, Response, Status, StatusCode},
     errors::Errors,
   };
-
-  use super::Response;
 
   const SUCCESSFUL_LOGOUT_RESPONSE: &str = r#"{
     "serverrequestid": "SUPERSECRETSERVERREQUESTID",
@@ -77,7 +48,7 @@ mod test {
 
   #[test]
   fn serialize_successful_logout_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(SUCCESSFUL_LOGOUT_RESPONSE)
+    let ser = serde_json::from_str::<Response<ResponseData>>(SUCCESSFUL_LOGOUT_RESPONSE)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 

@@ -1,24 +1,41 @@
 use serde::{Deserialize, Serialize};
-use serde_with::serde_as;
 
-use crate::serialization::{empty_string_as_none, opt_string_or_struct};
+use super::Action;
 
-use super::{Action, LoginCredentials, ResponseData, Status, StatusCode};
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct ResponseData {
+  #[serde(rename = "apisessionid")]
+  app_session_id: String,
+}
 
-use crate::api::netcup;
+impl ResponseData {
+  pub fn app_session_id(&self) -> &str {
+    &self.app_session_id
+  }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Params {
+  #[serde(rename = "customernumber")]
+  customer_number: u32,
+  #[serde(rename = "apikey")]
+  api_key: String,
+  #[serde(rename = "apipassword")]
+  api_password: String,
+}
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
   action: Action,
   #[serde(rename = "param")]
-  params: LoginCredentials,
+  params: Params,
 }
 
 impl Request {
   pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
     Self {
       action: Action::Login,
-      params: LoginCredentials {
+      params: Params {
         customer_number,
         api_key: api_key.to_string(),
         api_password: api_password.to_string(),
@@ -27,52 +44,15 @@ impl Request {
   }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-#[serde_as]
-pub struct Response {
-  #[serde(rename = "serverrequestid")]
-  server_request_id: String,
-  #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
-  client_request_id: Option<String>,
-  #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<Action>,
-  status: Status,
-  #[serde(rename = "statuscode")]
-  status_code: StatusCode,
-  #[serde(rename = "shortmessage")]
-  short_message: String,
-  #[serde(rename = "longmessage")]
-  long_message: Option<String>,
-  #[serde(rename = "responsedata", deserialize_with = "opt_string_or_struct")]
-  response_data: Option<ResponseData>,
-}
-
-impl Response {
-  pub fn api_session_id(&self) -> Option<String> {
-    Some(self.response_data.as_ref()?.app_session_id.clone())
-  }
-}
-
-impl netcup::Response for Response {
-  fn status_code(&self) -> StatusCode {
-    self.status_code
-  }
-
-  fn status(&self) -> Status {
-    self.status
-  }
-}
-
 #[cfg(test)]
 mod tests {
+  use super::*;
   use error_stack::{IntoReport, Result, ResultExt};
 
   use crate::{
-    api::netcup::{Action, ResponseData, Status, StatusCode},
+    api::netcup::{Action, Response, Status, StatusCode},
     errors::Errors,
   };
-
-  use super::Response;
 
   const FAILED_LOGIN: &str = r#"{
     "serverrequestid": "SUPERSECRETSERVERREQUESTID",
@@ -99,7 +79,7 @@ mod tests {
 
   #[test]
   fn serialize_successful_login_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(SUCCESSFUL_LOGIN)
+    let ser = serde_json::from_str::<Response<ResponseData>>(SUCCESSFUL_LOGIN)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
@@ -125,7 +105,7 @@ mod tests {
 
   #[test]
   fn serialize_failed_login_response() -> Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(FAILED_LOGIN)
+    let ser = serde_json::from_str::<Response<ResponseData>>(FAILED_LOGIN)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 

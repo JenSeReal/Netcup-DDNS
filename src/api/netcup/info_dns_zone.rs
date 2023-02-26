@@ -1,11 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::deserialize_number_from_string;
 
-use crate::{
-  api::netcup,
-  serialization::{empty_string_as_none, opt_string_or_struct},
-};
-
 use super::Action;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -32,41 +27,6 @@ impl ResponseData {
 
   pub fn ttl_mut(&mut self, ttl: u32) {
     self.ttl = ttl
-  }
-}
-
-#[derive(Debug, Serialize, Deserialize, Clone)]
-pub(crate) struct Response {
-  #[serde(rename = "serverrequestid")]
-  server_request_id: String,
-  #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
-  client_request_id: Option<String>,
-  #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<netcup::Action>,
-  status: netcup::Status,
-  #[serde(rename = "statuscode")]
-  status_code: netcup::StatusCode,
-  #[serde(rename = "shortmessage")]
-  short_message: String,
-  #[serde(rename = "longmessage")]
-  long_message: Option<String>,
-  #[serde(rename = "responsedata", deserialize_with = "opt_string_or_struct")]
-  response_data: Option<ResponseData>,
-}
-
-impl Response {
-  pub fn response_data(&self) -> Option<&ResponseData> {
-    self.response_data.as_ref()
-  }
-}
-
-impl netcup::Response for Response {
-  fn status_code(&self) -> netcup::StatusCode {
-    self.status_code
-  }
-
-  fn status(&self) -> netcup::Status {
-    self.status
   }
 }
 
@@ -108,7 +68,7 @@ mod test {
 
   use super::*;
   use crate::{
-    api::netcup::{Action, Status, StatusCode},
+    api::netcup::{Action, Response, Status, StatusCode},
     errors::Errors,
   };
 
@@ -155,7 +115,7 @@ mod test {
 
   #[test]
   fn serialize_successful_request() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(SUCCESSFUL_REQUEST)
+    let ser = serde_json::from_str::<Response<ResponseData>>(SUCCESSFUL_REQUEST)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
@@ -184,7 +144,7 @@ mod test {
 
   #[test]
   fn serialize_invalid_api_key() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(INVALID_API_KEY)
+    let ser = serde_json::from_str::<Response<ResponseData>>(INVALID_API_KEY)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
@@ -205,7 +165,7 @@ mod test {
 
   #[test]
   fn serialize_invalid_dns_zone() -> error_stack::Result<(), Errors> {
-    let ser = serde_json::from_str::<Response>(INVALID_DNS_ZONE)
+    let ser = serde_json::from_str::<Response<ResponseData>>(INVALID_DNS_ZONE)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 

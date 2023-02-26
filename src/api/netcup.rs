@@ -6,8 +6,12 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 
 use std::fmt::{Debug, Display};
 
-use crate::errors::Errors;
+use crate::{
+  errors::Errors,
+  serialization::{empty_string_as_none, opt_string_or_struct},
+};
 
+pub mod info_dns_records;
 pub mod info_dns_zone;
 pub mod login;
 pub mod logout;
@@ -17,10 +21,10 @@ pub async fn request<Rq, Rs>(
   url: &str,
   client: &Client,
   request: &Rq,
-) -> error_stack::Result<Rs, Errors>
+) -> error_stack::Result<Response<Rs>, Errors>
 where
   Rq: Serialize + Sized + Debug,
-  Rs: DeserializeOwned + Sized + Response + Debug,
+  Rs: DeserializeOwned + Sized + Debug,
 {
   let resonse = client
     .post(url)
@@ -42,7 +46,7 @@ where
 
     debug!("Recieved response body: {:?}", body);
 
-    let response_object = serde_json::from_str::<Rs>(&body)
+    let response_object = serde_json::from_str::<Response<Rs>>(&body)
       .into_report()
       .change_context(Errors::SerializeResponse)?;
 
@@ -78,6 +82,7 @@ pub enum Action {
   Logout,
   InfoDnsZone,
   UpdateDnsZone,
+  InfoDnsRecords,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -110,27 +115,6 @@ pub enum StatusCode {
   ValidationError = 4013,
 }
 
-pub trait Response {
-  fn status(&self) -> Status;
-  fn status_code(&self) -> StatusCode;
-}
-
-#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
-pub struct ResponseData {
-  #[serde(rename = "apisessionid")]
-  app_session_id: String,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub struct LoginCredentials {
-  #[serde(rename = "customernumber")]
-  customer_number: u32,
-  #[serde(rename = "apikey")]
-  api_key: String,
-  #[serde(rename = "apipassword")]
-  api_password: String,
-}
-
 #[derive(Debug, Serialize, Deserialize)]
 pub struct SessionCredentials {
   #[serde(rename = "customernumber")]
@@ -139,4 +123,43 @@ pub struct SessionCredentials {
   api_key: String,
   #[serde(rename = "apisessionid")]
   api_session_id: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct Response<T>
+where
+  T: DeserializeOwned,
+{
+  #[serde(rename = "serverrequestid")]
+  server_request_id: String,
+  #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
+  client_request_id: Option<String>,
+  #[serde(deserialize_with = "empty_string_as_none")]
+  action: Option<Action>,
+  status: Status,
+  #[serde(rename = "statuscode")]
+  status_code: StatusCode,
+  #[serde(rename = "shortmessage")]
+  short_message: String,
+  #[serde(rename = "longmessage")]
+  long_message: Option<String>,
+  #[serde(rename = "responsedata", deserialize_with = "opt_string_or_struct")]
+  response_data: Option<T>,
+}
+
+impl<T> Response<T>
+where
+  T: DeserializeOwned,
+{
+  pub fn status_code(&self) -> StatusCode {
+    self.status_code
+  }
+
+  pub fn status(&self) -> Status {
+    self.status
+  }
+
+  pub fn response_data(&self) -> Option<&T> {
+    self.response_data.as_ref()
+  }
 }

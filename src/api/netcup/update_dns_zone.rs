@@ -1,11 +1,6 @@
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::deserialize_number_from_string;
 
-use crate::{
-  api::netcup,
-  serialization::{empty_string_as_none, opt_string_or_struct},
-};
-
 use super::{info_dns_zone, Action};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -23,35 +18,6 @@ pub(crate) struct ResponseData {
   expire: u32,
   #[serde(rename = "dnssecstatus")]
   dns_sec_status: bool,
-}
-
-#[derive(Debug, Serialize, Deserialize)]
-pub(crate) struct Response {
-  #[serde(rename = "serverrequestid")]
-  server_request_id: String,
-  #[serde(rename = "clientrequestid", deserialize_with = "empty_string_as_none")]
-  client_request_id: Option<String>,
-  #[serde(deserialize_with = "empty_string_as_none")]
-  action: Option<netcup::Action>,
-  status: netcup::Status,
-  #[serde(rename = "statuscode")]
-  status_code: netcup::StatusCode,
-  #[serde(rename = "shortmessage")]
-  short_message: String,
-  #[serde(rename = "longmessage")]
-  long_message: Option<String>,
-  #[serde(rename = "responsedata", deserialize_with = "opt_string_or_struct")]
-  response_data: Option<ResponseData>,
-}
-
-impl netcup::Response for Response {
-  fn status_code(&self) -> netcup::StatusCode {
-    self.status_code
-  }
-
-  fn status(&self) -> netcup::Status {
-    self.status
-  }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
