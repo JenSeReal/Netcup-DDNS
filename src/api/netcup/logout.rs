@@ -1,25 +1,32 @@
 use serde::{Deserialize, Serialize};
 
-use super::{Action, SessionCredentials};
+use super::{Action, ApiSessionId, SessionCredentials};
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Request {
   action: Action,
   #[serde(rename = "param")]
-  params: SessionCredentials,
+  params: Params,
 }
 
 impl Request {
-  pub fn new(customer_number: u32, api_key: &str, app_session_id: &str) -> Self {
+  pub fn new(session: &SessionCredentials<ApiSessionId>) -> Self {
     Self {
       action: Action::Logout,
-      params: SessionCredentials {
-        customer_number,
-        api_key: api_key.to_string(),
-        api_session_id: app_session_id.to_string(),
+      params: Params {
+        customer_number: session.customer_number,
+        api_key: session.api_key.to_string(),
+        api_session_id: session.api_session_id().to_string(),
       },
     }
   }
+}
+
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
+pub struct Params {
+  customer_number: u32,
+  api_key: String,
+  api_session_id: String,
 }
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]

@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 
-use super::Action;
+use super::{Action, NoApiSessionId, SessionCredentials};
 
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ResponseData {
@@ -32,13 +32,13 @@ pub struct Request {
 }
 
 impl Request {
-  pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
+  pub fn new(session: &SessionCredentials<NoApiSessionId>) -> Self {
     Self {
       action: Action::Login,
       params: Params {
-        customer_number,
-        api_key: api_key.to_string(),
-        api_password: api_password.to_string(),
+        customer_number: session.customer_number,
+        api_key: session.api_key.to_string(),
+        api_password: session.api_password.to_string(),
       },
     }
   }

@@ -13,7 +13,7 @@ use structopt::StructOpt;
 use tokio::time::sleep;
 
 use crate::{
-  api::netcup::{info_dns_records, logout, update_dns_zone, Response, Status},
+  api::netcup::{info_dns_records, logout, update_dns_zone, Response, SessionCredentials, Status},
   cli::Cli,
   errors::Errors,
 };
@@ -28,11 +28,13 @@ async fn main() -> error_stack::Result<(), Errors> {
 
   let cli = Cli::from_args();
   let client = reqwest::Client::new();
+  let session_credentials =
+    SessionCredentials::new(cli.customer_number(), cli.api_key(), cli.api_password());
 
   let login_response: netcup::Response<login::ResponseData> = api::netcup::request(
     cli.api_url(),
     &client,
-    &login::Request::new(cli.customer_number(), cli.api_key(), cli.api_password()),
+    &login::Request::new(&session_credentials),
   )
   .await
   .change_context(Errors::Login)?;
@@ -43,6 +45,8 @@ async fn main() -> error_stack::Result<(), Errors> {
     .response_data()
     .and_then(|data| Some(data.app_session_id()))
     .ok_or_else(|| Report::new(Errors::RetrieveAPISesionId))?;
+
+  let session_credentials = session_credentials.api_session_id(&api_session_id);
 
   let (ip4, ip6) = tokio::join!(public_ip::addr_v4(), public_ip::addr_v6());
   let ips = [
@@ -61,12 +65,7 @@ async fn main() -> error_stack::Result<(), Errors> {
       api::netcup::request(
         cli.api_url(),
         &client,
-        &info_dns_zone::Request::new(
-          domain.domain(),
-          cli.customer_number(),
-          cli.api_key(),
-          &api_session_id,
-        ),
+        &info_dns_zone::Request::new(&session_credentials, domain.domain()),
       )
       .await
       .change_context(Errors::DNSZoneNotFound(domain.domain().to_string()))?;
@@ -86,13 +85,7 @@ async fn main() -> error_stack::Result<(), Errors> {
             api::netcup::request(
               cli.api_url(),
               &client,
-              &update_dns_zone::Request::new(
-                domain.domain(),
-                cli.customer_number(),
-                cli.api_key(),
-                &api_session_id,
-                &response_data,
-              ),
+              &update_dns_zone::Request::new(&session_credentials, domain.domain(), &response_data),
             )
             .await
             .change_context(Errors::UpdateDNSZone(domain.domain().to_string()))?;
@@ -103,12 +96,7 @@ async fn main() -> error_stack::Result<(), Errors> {
     let info_dns_record: netcup::Response<info_dns_records::ResponseData> = netcup::request(
       cli.api_url(),
       &client,
-      &info_dns_records::Request::new(
-        domain.domain(),
-        cli.customer_number(),
-        cli.api_key(),
-        &api_session_id,
-      ),
+      &info_dns_records::Request::new(&session_credentials, domain.domain()),
     )
     .await?;
   }
@@ -118,7 +106,7 @@ async fn main() -> error_stack::Result<(), Errors> {
   api::netcup::request::<logout::Request, Response<logout::ResponseData>>(
     cli.api_url(),
     &client,
-    &logout::Request::new(cli.customer_number(), cli.api_key(), &api_session_id),
+    &logout::Request::new(&session_credentials),
   )
   .await
   .change_context(Errors::Logout)?;

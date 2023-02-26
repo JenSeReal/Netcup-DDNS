@@ -1,7 +1,7 @@
 use serde::{Deserialize, Serialize};
 use serde_aux::prelude::deserialize_number_from_string;
 
-use super::{info_dns_zone, Action};
+use super::{info_dns_zone, Action, ApiSessionId, SessionCredentials};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub(crate) struct ResponseData {
@@ -42,19 +42,17 @@ pub struct Param {
 
 impl Request {
   pub fn new(
+    session: &SessionCredentials<ApiSessionId>,
     domain_name: &str,
-    customer_number: u32,
-    api_key: &str,
-    api_session_id: &str,
     dns_zone: &info_dns_zone::ResponseData,
   ) -> Self {
     Self {
       action: Action::UpdateDnsZone,
       param: Param {
         domain_name: domain_name.to_string(),
-        customer_number,
-        api_key: api_key.to_string(),
-        api_session_id: api_session_id.to_string(),
+        customer_number: session.customer_number,
+        api_key: session.api_key.to_string(),
+        api_session_id: session.api_session_id().to_string(),
         dns_zone: dns_zone.clone(),
       },
     }

@@ -1,7 +1,6 @@
 use serde::{Deserialize, Serialize};
-use serde_aux::prelude::deserialize_number_from_string;
 
-use super::Action;
+use super::{Action, ApiSessionId, SessionCredentials};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ResponseData {}
@@ -13,14 +12,14 @@ pub struct Request {
 }
 
 impl Request {
-  pub fn new(domain_name: &str, customer_number: u32, api_key: &str, api_session_id: &str) -> Self {
+  pub fn new(session: &SessionCredentials<ApiSessionId>, domain_name: &str) -> Self {
     Self {
       action: Action::InfoDnsRecords,
       param: Param {
         domain_name: domain_name.to_string(),
-        customer_number,
-        api_key: api_key.to_string(),
-        api_session_id: api_session_id.to_string(),
+        customer_number: session.customer_number,
+        api_key: session.api_key.to_string(),
+        api_session_id: session.api_session_id().to_string(),
       },
     }
   }

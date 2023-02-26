@@ -4,7 +4,10 @@ use reqwest::Client;
 use serde::{de::DeserializeOwned, Deserialize, Serialize};
 use serde_repr::{Deserialize_repr, Serialize_repr};
 
-use std::fmt::{Debug, Display};
+use std::{
+  fmt::{Debug, Display},
+  marker::PhantomData,
+};
 
 use crate::{
   errors::Errors,
@@ -115,16 +118,6 @@ pub enum StatusCode {
   ValidationError = 4013,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
-pub struct SessionCredentials {
-  #[serde(rename = "customernumber")]
-  customer_number: u32,
-  #[serde(rename = "apikey")]
-  api_key: String,
-  #[serde(rename = "apisessionid")]
-  api_session_id: String,
-}
-
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Response<T>
 where
@@ -161,5 +154,52 @@ where
 
   pub fn response_data(&self) -> Option<&T> {
     self.response_data.as_ref()
+  }
+}
+
+pub struct NoApiSessionId;
+pub struct ApiSessionId;
+
+#[derive(Debug, Serialize, Deserialize)]
+pub struct SessionCredentials<T> {
+  #[serde(rename = "customernumber")]
+  customer_number: u32,
+  #[serde(rename = "apikey")]
+  api_key: String,
+  #[serde(rename = "apipassword")]
+  api_password: String,
+  #[serde(rename = "apisessionid")]
+  api_session_id: Option<String>,
+  #[serde(skip)]
+  has_api_session_id: PhantomData<T>,
+}
+
+impl SessionCredentials<NoApiSessionId> {
+  pub fn api_session_id(self, api_session_id: &impl ToString) -> SessionCredentials<ApiSessionId> {
+    SessionCredentials {
+      customer_number: self.customer_number,
+      api_key: self.api_key,
+      api_password: self.api_password,
+      api_session_id: Some(api_session_id.to_string()),
+      has_api_session_id: PhantomData,
+    }
+  }
+}
+
+impl SessionCredentials<ApiSessionId> {
+  pub fn api_session_id(&self) -> &str {
+    self.api_session_id.as_ref().unwrap()
+  }
+}
+
+impl<T> SessionCredentials<T> {
+  pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
+    Self {
+      customer_number,
+      api_key: api_key.to_string(),
+      api_password: api_password.to_string(),
+      api_session_id: None,
+      has_api_session_id: PhantomData,
+    }
   }
 }
