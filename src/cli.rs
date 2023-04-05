@@ -52,7 +52,7 @@ impl DNSEntry {
   name = "Netcup updater",
   about = "Updates one DNS record in Netcup via the API."
 )]
-pub(crate) struct Cli {
+pub struct Cli {
   #[structopt(
     short,
     long,

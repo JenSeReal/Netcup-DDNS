@@ -1,60 +1,31 @@
-use serde::{Deserialize, Serialize};
-use serde_aux::prelude::deserialize_number_from_string;
+use error_stack::ResultExt;
 
-use super::{info_dns_zone, Action, ApiSessionId, SessionCredentials};
+use crate::{api, errors::Errors};
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub(crate) struct ResponseData {
-  name: String,
-  #[serde(deserialize_with = "deserialize_number_from_string")]
-  ttl: u32,
-  #[serde(deserialize_with = "deserialize_number_from_string")]
-  serial: u32,
-  #[serde(deserialize_with = "deserialize_number_from_string")]
-  refresh: u32,
-  #[serde(deserialize_with = "deserialize_number_from_string")]
-  retry: u32,
-  #[serde(deserialize_with = "deserialize_number_from_string")]
-  expire: u32,
-  #[serde(rename = "dnssecstatus")]
-  dns_sec_status: bool,
-}
+use super::{
+  models::{
+    info_dns_zone,
+    update_dns_zone::{Params, ResponseData},
+    ApiSessionId, Request, Response,
+  },
+  Action, Client,
+};
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Request {
-  action: Action,
-  param: Param,
-}
-
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-pub struct Param {
-  #[serde(rename = "domainname")]
-  domain_name: String,
-  #[serde(rename = "customernumber")]
-  customer_number: u32,
-  #[serde(rename = "apikey")]
-  api_key: String,
-  #[serde(rename = "apisessionid")]
-  api_session_id: String,
-  #[serde(rename = "dnszone")]
-  dns_zone: info_dns_zone::ResponseData,
-}
-
-impl Request {
-  pub fn new(
-    session: &SessionCredentials<ApiSessionId>,
-    domain_name: &str,
-    dns_zone: &info_dns_zone::ResponseData,
-  ) -> Self {
-    Self {
-      action: Action::UpdateDnsZone,
-      param: Param {
-        domain_name: domain_name.to_string(),
-        customer_number: session.customer_number,
-        api_key: session.api_key.to_string(),
-        api_session_id: session.api_session_id().to_string(),
-        dns_zone: dns_zone.clone(),
-      },
-    }
+impl Client<ApiSessionId> {
+  pub async fn update_dns_zone(
+    &self,
+    domain_name: impl Into<String>,
+    dns_zone: info_dns_zone::ResponseData,
+  ) -> error_stack::Result<Response<ResponseData>, Errors> {
+    api::netcup::request::<Params, ResponseData>(
+      &self.api_url,
+      &self.client,
+      &Request::new(
+        Action::UpdateDnsRecords,
+        Params::new(domain_name, &self.session_credentials, dns_zone),
+      ),
+    )
+    .await
+    .change_context(Errors::Login)
   }
 }

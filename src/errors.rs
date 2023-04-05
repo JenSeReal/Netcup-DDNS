@@ -12,8 +12,6 @@ pub enum Errors {
   SendRequest,
   #[error("Failed to serialize the response.")]
   SerializeResponse,
-  #[error("Failed to load .env file.")]
-  LoadingEnvFile,
   #[error("Request failed.")]
   ValidationError,
   #[error("Failed to serialize the domains.")]
@@ -22,6 +20,6 @@ pub enum Errors {
   DNSZoneNotFound(String),
   #[error("Could not update dns zone {0}")]
   UpdateDNSZone(String),
-  #[error("Invalid record type {0}")]
-  InvalidRecordType(String),
+  #[error("Could not update dns records {0}")]
+  UpdateDNSRecords(String),
 }
