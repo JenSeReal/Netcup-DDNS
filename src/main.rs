@@ -8,20 +8,22 @@ use std::{env, net::IpAddr, time::Duration};
 use api::netcup::{self, info_dns_zone, login};
 use dotenv::dotenv;
 use error_stack::{IntoReport, Report, ResultExt};
-use log::{error, info, warn};
-use public_ip::dns;
+use log::{debug, error, info, warn};
 use structopt::StructOpt;
 use tokio::time::sleep;
 
 use crate::{
-  api::netcup::{info_dns_records, logout, update_dns_zone, Response, SessionCredentials, Status},
+  api::netcup::{
+    info_dns_records::{self, RecordType},
+    logout, update_dns_zone, Response, SessionCredentials, Status, StatusCode,
+  },
   cli::Cli,
   errors::Errors,
 };
 
 #[tokio::main]
 async fn main() -> error_stack::Result<(), Errors> {
-  env::set_var("RUST_LOG", "debug");
+  env::set_var("RUST_LOG", "info");
   dotenv()
     .into_report()
     .change_context(Errors::LoadingEnvFile)?;
@@ -55,9 +57,7 @@ async fn main() -> error_stack::Result<(), Errors> {
     ip6.and_then(|ip| Some(IpAddr::V6(ip))),
   ];
 
-  for ip in ips.iter().flatten() {
-    info!("Got IP {:?}", ip);
-  }
+  ips.iter().flatten().for_each(|ip| info!("Got IP {ip:?}"));
 
   for domain in cli.domains() {
     info!("Looking at domain {:#?}", domain);
@@ -82,14 +82,24 @@ async fn main() -> error_stack::Result<(), Errors> {
         if let Some(ttl) = cli.ttl() {
           response_data.ttl_mut(ttl);
           info!("Changing TTL to {}", ttl);
-          let _update_dns_zone_response: Response<update_dns_zone::ResponseData> =
-            api::netcup::request(
-              cli.api_url(),
-              &client,
-              &update_dns_zone::Request::new(&session_credentials, domain.domain(), &response_data),
-            )
-            .await
-            .change_context(Errors::UpdateDNSZone(domain.domain().to_string()))?;
+          if let Ok(update_dns_zone_response) = api::netcup::request::<
+            update_dns_zone::Request,
+            Response<update_dns_zone::ResponseData>,
+          >(
+            cli.api_url(),
+            &client,
+            &update_dns_zone::Request::new(&session_credentials, domain.domain(), &response_data),
+          )
+          .await
+          {
+            info!("Updated dns zone!");
+            debug!("{:#?}", update_dns_zone_response);
+            if update_dns_zone_response.status_code() != StatusCode::Success {
+              error!("{}", Errors::UpdateDNSZone(domain.domain().to_string()));
+            }
+          } else {
+            error!("{}", Errors::UpdateDNSZone(domain.domain().to_string()));
+          }
         }
       }
     }
@@ -109,12 +119,34 @@ async fn main() -> error_stack::Result<(), Errors> {
         .response_data()
         .and_then(|data| Some(data.dns_records()))
       {
-        let found_record = dns_records
+        let found_records = dns_records
           .iter()
           .filter(|record| record.host_name() == sub)
+          .filter(|record| !matches!(record.record_type(), RecordType::Other(_)))
           .collect::<Vec<_>>();
 
-        dbg!(found_record);
+        debug!("Found records: {:#?}", found_records);
+
+        match found_records.len() {
+          0 => {
+            info!("No DNS record found for {sub:#?} subdomain.. creating one..");
+
+            for ip in ips.iter().flatten() {
+              info!("The new IP is: {ip}");
+
+              match ip {
+                IpAddr::V4(ip) => {}
+                IpAddr::V6(ip) => {}
+              }
+            }
+          }
+          1 => {
+            info!("One DNS record found for {sub:#?} subdomain.. updating..");
+          }
+          _ => {
+            error!("Too many DNS record found for {sub:#?} subdomain.. please specify");
+          }
+        }
       }
     }
   }

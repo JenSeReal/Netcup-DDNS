@@ -22,4 +22,6 @@ pub enum Errors {
   DNSZoneNotFound(String),
   #[error("Could not update dns zone {0}")]
   UpdateDNSZone(String),
+  #[error("Invalid record type {0}")]
+  InvalidRecordType(String),
 }

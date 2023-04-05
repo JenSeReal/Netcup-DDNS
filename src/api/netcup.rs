@@ -15,6 +15,7 @@ pub mod info_dns_records;
 pub mod info_dns_zone;
 pub mod login;
 pub mod logout;
+pub mod update_dns_records;
 pub mod update_dns_zone;
 
 pub async fn request<Rq, Rs>(
@@ -69,7 +70,7 @@ where
   }
 
   error!(
-    "Http statuc code {} while performing the request",
+    "Http status code {} while performing the request",
     resonse.status()
   );
   Err(Report::new(Errors::SendRequest))
@@ -83,6 +84,7 @@ pub enum Action {
   InfoDnsZone,
   UpdateDnsZone,
   InfoDnsRecords,
+  UpdateDnsRecords,
 }
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -101,6 +103,12 @@ pub enum StatusCode {
   Success = 2000,
   Error = 4001,
   ValidationError = 4013,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Request<T> {
+  action: Action,
+  param: T,
 }
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
@@ -160,6 +168,16 @@ pub struct SessionCredentials<T> {
 }
 
 impl SessionCredentials<NoApiSessionId> {
+  pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
+    Self {
+      customer_number,
+      api_key: api_key.to_string(),
+      api_password: api_password.to_string(),
+      api_session_id: None,
+      has_api_session_id: PhantomData,
+    }
+  }
+
   pub fn api_session_id(self, api_session_id: &impl ToString) -> SessionCredentials<ApiSessionId> {
     SessionCredentials {
       customer_number: self.customer_number,
@@ -174,17 +192,5 @@ impl SessionCredentials<NoApiSessionId> {
 impl SessionCredentials<ApiSessionId> {
   pub fn api_session_id(&self) -> &str {
     self.api_session_id.as_ref().unwrap()
-  }
-}
-
-impl<T> SessionCredentials<T> {
-  pub fn new(customer_number: u32, api_key: &str, api_password: &str) -> Self {
-    Self {
-      customer_number,
-      api_key: api_key.to_string(),
-      api_password: api_password.to_string(),
-      api_session_id: None,
-      has_api_session_id: PhantomData,
-    }
   }
 }
